@@ -4,6 +4,7 @@ Generates synthetic supply chain data:
 - suppliers.csv: external supplier cost/capacity/lead-time profile (Module 2 - Procurement)
 - inventory.csv: current on-hand inventory by location (Module 3 - Inventory)
 - factory_status.csv: own-factory capacity/bookings/outsourcing costs (Module 9 - Production)
+- regional_demand.csv: customer demand split + shipping economics by region (Module 3 + Module 4)
 
 Run: python src/generate_data.py
 """
@@ -82,6 +83,19 @@ def generate_factory_status():
     }])
 
 
+def generate_regional_demand():
+    return pd.DataFrame([
+        {"region": "North America", "demand_share": 0.35, "avg_order_units": 25,
+         "individual_shipping_cost_per_order": 35, "container_cost": 3_000, "transit_days_from_factory": 3},
+        {"region": "Europe", "demand_share": 0.30, "avg_order_units": 30,
+         "individual_shipping_cost_per_order": 40, "container_cost": 4_000, "transit_days_from_factory": 12},
+        {"region": "Asia", "demand_share": 0.25, "avg_order_units": 30,
+         "individual_shipping_cost_per_order": 45, "container_cost": 4_500, "transit_days_from_factory": 18},
+        {"region": "Latin America", "demand_share": 0.10, "avg_order_units": 20,
+         "individual_shipping_cost_per_order": 50, "container_cost": 3_500, "transit_days_from_factory": 10},
+    ])
+
+
 def generate_inventory():
     return pd.DataFrame([
         {"location": "Factory Warehouse", "units_on_hand": 8_000, "holding_cost_per_unit_month": 1.00},
@@ -111,3 +125,7 @@ if __name__ == "__main__":
     factory = generate_factory_status()
     factory.to_csv(f"{OUT_DIR}/factory_status.csv", index=False)
     print(f"\nWrote {OUT_DIR}/factory_status.csv ({len(factory)} rows)")
+
+    regional_demand = generate_regional_demand()
+    regional_demand.to_csv(f"{OUT_DIR}/regional_demand.csv", index=False)
+    print(f"\nWrote {OUT_DIR}/regional_demand.csv ({len(regional_demand)} rows)")
