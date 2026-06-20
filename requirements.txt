@@ -2,3 +2,5 @@ prophet
 pandas
 numpy
 pulp
+streamlit
+plotly

@@ -63,6 +63,17 @@ risk/what-if scenarios, and financial performance — surfaced in a Streamlit da
   net savings honestly even though two categories (procurement diversification, inventory
   repositioning) cost more, not less.
 
+**Week 6 — Streamlit Dashboard (Part 1):** done.
+
+- `src/pipeline.py` — runs every Week 1-5 module in order in memory (no subprocess calls) and
+  returns all the resulting dataframes; each step still writes its CSV to `outputs/` as a side
+  effect, so the file artifacts match running the scripts by hand.
+- `streamlit_app.py` — 4 tabs: **Executive Dashboard** (KPI cards, active alerts pulled straight
+  from the Week 4 disruption simulation, plan-vs-actual table), **Demand Forecast** (history +
+  forecast + confidence band chart), **Procurement** (supplier mix table/chart + diversification
+  premium), **Inventory** (current vs. optimized positioning table/chart). Verified rendering
+  end-to-end with Playwright (all 4 tabs, no console errors).
+
 ## Setup
 
 ```
@@ -72,6 +83,14 @@ pip install -r requirements.txt
 ```
 
 ## Run
+
+Dashboard (runs the whole pipeline and serves all 4 tabs):
+
+```
+streamlit run streamlit_app.py
+```
+
+Or run each module standalone from the CLI:
 
 ```
 python src/generate_data.py      # generates data/*.csv
