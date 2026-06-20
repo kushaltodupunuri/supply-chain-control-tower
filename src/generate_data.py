@@ -1,8 +1,9 @@
 """
-Generates synthetic supply chain data for Module 1 (Demand Forecasting):
-- sales_history.csv: daily unit sales with seasonality, promotions, weather, price
-- suppliers.csv: supplier cost/capacity/lead-time profile (used by later modules)
-- inventory.csv: current on-hand inventory by location (used by later modules)
+Generates synthetic supply chain data:
+- sales_history.csv: daily unit sales with seasonality, promotions, weather, price (Module 1)
+- suppliers.csv: external supplier cost/capacity/lead-time profile (Module 2 - Procurement)
+- inventory.csv: current on-hand inventory by location (Module 3 - Inventory)
+- factory_status.csv: own-factory capacity/bookings/outsourcing costs (Module 9 - Production)
 
 Run: python src/generate_data.py
 """
@@ -70,6 +71,17 @@ def generate_suppliers():
     ])
 
 
+def generate_factory_status():
+    return pd.DataFrame([{
+        "capacity_units_per_month": 25_000,
+        "already_booked_units": 5_000,
+        "in_house_unit_cost": 1.50,
+        "contractor_unit_cost": 2.60,
+        "overtime_unit_cost": 2.10,
+        "overtime_capacity_units": 5_000,
+    }])
+
+
 def generate_inventory():
     return pd.DataFrame([
         {"location": "Factory Warehouse", "units_on_hand": 8_000, "holding_cost_per_unit_month": 1.00},
@@ -95,3 +107,7 @@ if __name__ == "__main__":
     inventory = generate_inventory()
     inventory.to_csv(f"{OUT_DIR}/inventory.csv", index=False)
     print(f"\nWrote {OUT_DIR}/inventory.csv ({len(inventory)} rows)")
+
+    factory = generate_factory_status()
+    factory.to_csv(f"{OUT_DIR}/factory_status.csv", index=False)
+    print(f"\nWrote {OUT_DIR}/factory_status.csv ({len(factory)} rows)")
