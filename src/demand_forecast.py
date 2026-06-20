@@ -50,7 +50,7 @@ def backtest(df):
         (actual >= forecast["yhat_lower"]) & (actual <= forecast["yhat_upper"])
     ) * 100
 
-    return accuracy, within_interval
+    return accuracy, within_interval, predicted.sum(), actual.sum()
 
 
 def forecast_next_period(df):
@@ -79,9 +79,10 @@ def forecast_next_period(df):
 if __name__ == "__main__":
     df = load_sales_history()
 
-    accuracy, within_interval = backtest(df)
+    accuracy, within_interval, forecast_total, actual_total = backtest(df)
     print(f"Backtest ({HOLDOUT_DAYS}-day holdout): accuracy = {accuracy:.1f}%, "
           f"{within_interval:.0f}% of actuals within forecast interval")
+    print(f"  Forecasted: {forecast_total:,.0f} units | Actual: {actual_total:,.0f} units")
 
     result = forecast_next_period(df)
     result.to_csv("outputs/demand_forecast.csv", index=False)

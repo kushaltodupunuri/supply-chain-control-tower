@@ -20,7 +20,7 @@ def get_total_demand(path="outputs/demand_forecast.csv"):
     return forecast["yhat"].sum()
 
 
-def plan_procurement(total_demand, suppliers):
+def plan_procurement(total_demand, suppliers, max_supplier_share=MAX_SINGLE_SUPPLIER_SHARE):
     problem = pulp.LpProblem("procurement_cost_minimization", pulp.LpMinimize)
 
     qty = {
@@ -31,7 +31,7 @@ def plan_procurement(total_demand, suppliers):
     problem += pulp.lpSum(qty[row.supplier_id] * row.unit_cost for row in suppliers.itertuples())
     problem += pulp.lpSum(qty.values()) >= total_demand
 
-    cap_per_supplier = MAX_SINGLE_SUPPLIER_SHARE * total_demand
+    cap_per_supplier = max_supplier_share * total_demand
     for supplier_id in qty:
         problem += qty[supplier_id] <= cap_per_supplier
 

@@ -110,10 +110,12 @@ if __name__ == "__main__":
     spare_overtime = factory["overtime_capacity_units"].iloc[0] - used_overtime
     spare_contractor = factory["contractor_capacity_units"].iloc[0] - used_contractor
 
+    emergency_costs = []
     for row in reports.itertuples():
         if row.rejection_rate <= QUALITY_BASELINE_RATE * QUALITY_ALERT_MULTIPLE:
             print(f"Day {row.day}: produced {row.units_produced:,.0f} units, "
                   f"rejection rate {row.rejection_rate:.1%} (normal)")
+            emergency_costs.append(0.0)
             continue
 
         miss_units = row.units_produced * (row.rejection_rate - QUALITY_BASELINE_RATE)
@@ -130,6 +132,9 @@ if __name__ == "__main__":
                 spare_contractor -= item["units"]
         if unmet > 0:
             print(f"  WARNING: {unmet:,.0f} units still unmet - no spare capacity left today")
+        emergency_costs.append(sum(item["cost"] for item in allocation))
+
+    reports["emergency_cost"] = emergency_costs
 
     print("\n" + "=" * 60)
     print("SHIPMENT TRACKING")

@@ -50,6 +50,19 @@ risk/what-if scenarios, and financial performance — surfaced in a Streamlit da
   under perturbed demand/price/lead-time inputs (the same function a future dashboard slider would
   call), reporting cost, service level, and unmet units per scenario.
 
+**Week 5 — Performance Tracking + Financial Dashboard:** done.
+
+- `src/performance.py` — planned-vs-actual for forecast, procurement, production, logistics,
+  inventory, and on-time delivery. The "actual" side isn't guessed: it's the plan plus whatever
+  real disruption events Week 4's simulation produced (the Day 3 quality spike's emergency cost,
+  the Asia shipment delay's retention discount and DC inventory draw-down), so every variance
+  traces back to something this same pipeline computed.
+- `src/finance.py` — compares the optimized plan against the naive baseline each module would
+  produce without its own optimization (re-running `plan_procurement`/`plan_production` with
+  optimization disabled, plus the unconsolidated/legacy-inventory numbers from Weeks 2-3). Reports
+  net savings honestly even though two categories (procurement diversification, inventory
+  repositioning) cost more, not less.
+
 ## Setup
 
 ```
@@ -70,7 +83,10 @@ python src/logistics.py          # writes outputs/logistics_plan.csv
 python src/risk.py               # writes outputs/risk_scenarios.csv
 python src/disruption.py         # writes outputs/quality_reports.csv + shipment_alerts.csv
 python src/whatif.py             # writes outputs/whatif_scenarios.csv
+python src/performance.py        # writes outputs/performance_tracking.csv
+python src/finance.py            # writes outputs/financial_dashboard.csv
 ```
 
 Current backtest accuracy: **94.0%** (30-day holdout, target was 90%+).
 Logistics consolidation saves **~$26.5K** vs. shipping every order individually.
+Net savings vs. a naive (unoptimized) plan: **~$58.8K/month (29.7%)**.
