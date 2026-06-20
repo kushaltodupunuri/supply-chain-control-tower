@@ -80,6 +80,7 @@ def generate_factory_status():
         "contractor_unit_cost": 2.60,
         "overtime_unit_cost": 2.10,
         "overtime_capacity_units": 5_000,
+        "contractor_capacity_units": 20_000,
     }])
 
 

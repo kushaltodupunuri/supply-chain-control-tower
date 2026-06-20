@@ -5,8 +5,10 @@ Checks whether the in-house factory can actually produce what demand
 requires once existing bookings are accounted for. If there's a shortfall,
 covers it with the cheapest combination of available levers: existing
 finished-goods inventory (free), overtime (capped, cheap), then an
-outsourced contractor (uncapped, most expensive) - filling each lever to
+outsourced contractor (capped, most expensive) - filling each lever to
 its limit before moving to the next, which minimizes total added cost.
+Any demand left over after every lever is maxed out is reported as a
+real stockout (unmet_units), not silently absorbed.
 
 Run: python src/production.py
 """
@@ -29,7 +31,7 @@ def plan_production(total_demand, factory, inventory):
     levers = [
         ("Existing finished-goods inventory", inventory["units_on_hand"].sum(), 0.0),
         ("Overtime", factory["overtime_capacity_units"].iloc[0], factory["overtime_unit_cost"].iloc[0]),
-        ("Outsource to contractor", float("inf"), factory["contractor_unit_cost"].iloc[0]),
+        ("Outsource to contractor", factory["contractor_capacity_units"].iloc[0], factory["contractor_unit_cost"].iloc[0]),
     ]
     levers.sort(key=lambda lever: lever[2])  # cheapest lever first
 

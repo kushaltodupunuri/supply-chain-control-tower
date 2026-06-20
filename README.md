@@ -36,6 +36,20 @@ risk/what-if scenarios, and financial performance — surfaced in a Streamlit da
   individually against batching into full containers, and for each region's leftover units, picks
   whichever is cheaper: an LTL shipment or rounding up to one more container.
 
+**Week 4 — Risk, Disruptions, What-If:** done.
+
+- `src/risk.py` — four disruption scenarios (top-supplier failure, factory outbreak, demand drop,
+  port delay), each reusing the actual procurement/production functions to compute a real
+  "residual cost" (what's still exposed after the plan's existing mitigations), not just an
+  unmitigated worst case. Ranked by probability x residual cost.
+- `src/disruption.py` — simulates a week of daily factory quality reports and a shipment transit
+  check per region; alerts when rejection rate or delay exceeds normal range, and auto-allocates
+  the shortfall across whatever spare overtime/contractor/DC-inventory capacity the baseline plan
+  didn't already use.
+- `src/whatif.py` — `run_scenario()` re-runs the real procurement/production/safety-stock logic
+  under perturbed demand/price/lead-time inputs (the same function a future dashboard slider would
+  call), reporting cost, service level, and unmet units per scenario.
+
 ## Setup
 
 ```
@@ -53,6 +67,9 @@ python src/procurement.py        # writes outputs/procurement_plan.csv
 python src/production.py         # writes outputs/production_plan_summary.csv + _allocation.csv
 python src/inventory.py          # writes outputs/inventory_plan.csv
 python src/logistics.py          # writes outputs/logistics_plan.csv
+python src/risk.py               # writes outputs/risk_scenarios.csv
+python src/disruption.py         # writes outputs/quality_reports.csv + shipment_alerts.csv
+python src/whatif.py             # writes outputs/whatif_scenarios.csv
 ```
 
 Current backtest accuracy: **94.0%** (30-day holdout, target was 90%+).
