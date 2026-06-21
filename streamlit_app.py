@@ -29,46 +29,50 @@ st.markdown("""
 <style>
 .kpi-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 14px;
-    margin: 4px 0 18px 0;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin: 8px 0 22px 0;
 }
 .kpi-card {
     background: #ffffff;
-    border-radius: 10px;
-    border-left: 5px solid var(--kpi-color, #3b82f6);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.06);
-    padding: 14px 18px 12px 16px;
+    border-radius: 16px;
+    border-left: 6px solid var(--kpi-color, #3b82f6);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
+    padding: 20px 20px 18px 20px;
+}
+.kpi-icon {
+    font-size: 1.9rem;
+    margin-bottom: 10px;
+    line-height: 1;
 }
 .kpi-label {
-    font-size: 0.76rem;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 700;
     color: #6b7280;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 6px;
+    letter-spacing: 0.04em;
+    margin-bottom: 10px;
 }
 .kpi-value {
-    font-size: 1.7rem;
-    font-weight: 700;
-    color: #111827;
-    line-height: 1.2;
+    font-size: 2.1rem;
+    font-weight: 800;
+    line-height: 1.15;
+    color: var(--kpi-color, #111827);
 }
 .kpi-sub {
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin-top: 5px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-top: 6px;
+    color: var(--kpi-color, #6b7280);
 }
-.kpi-sub.up { color: #16a34a; }
-.kpi-sub.down { color: #dc2626; }
-.kpi-sub.neutral { color: #6b7280; }
 </style>
 """, unsafe_allow_html=True)
 
 
-def kpi_card(label, value, sub=None, sub_direction="neutral", color=BLUE):
-    sub_html = f'<div class="kpi-sub {sub_direction}">{sub}</div>' if sub else ""
-    return (f'<div class="kpi-card" style="--kpi-color:{color}">'
+def kpi_card(label, value, sub=None, color=BLUE, icon=""):
+    icon_html = f'<div class="kpi-icon">{icon}</div>' if icon else ""
+    sub_html = f'<div class="kpi-sub">{sub}</div>' if sub else ""
+    return (f'<div class="kpi-card" style="--kpi-color:{color}">{icon_html}'
             f'<div class="kpi-label">{label}</div>'
             f'<div class="kpi-value">{value}</div>{sub_html}</div>')
 
@@ -77,8 +81,8 @@ def kpi_row(cards):
     st.markdown(f'<div class="kpi-grid">{"".join(cards)}</div>', unsafe_allow_html=True)
 
 
-def blank_kpi_row(labels):
-    kpi_row([kpi_card(label, BLANK, color=GRAY) for label in labels])
+def blank_kpi_row(labels_icons):
+    kpi_row([kpi_card(label, BLANK, color=GRAY, icon=icon) for label, icon in labels_icons])
 
 
 @st.cache_data
@@ -172,7 +176,10 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 # ---------------------------------------------------------------- Tab 1
 with tab1:
     if data is None:
-        blank_kpi_row(["Demand (next 30 days)", "Net savings vs. naive plan", "Service level", "Top risk (expected loss)"])
+        blank_kpi_row([
+            ("Demand (next 30 days)", "📦"), ("Net savings vs. naive plan", "💰"),
+            ("Service level", "🎯"), ("Top risk (expected loss)", "⚠️"),
+        ])
     else:
         production_plan = data["production_plan"]
         service_level = (production_plan["total_demand"] - production_plan["unmet_units"]) / production_plan["total_demand"] * 100
@@ -180,16 +187,15 @@ with tab1:
         top_risk = data["risk_scenarios"].iloc[0]
 
         kpi_row([
-            kpi_card("Demand (next 30 days)", f"{data['total_demand']:,.0f} units", color=BLUE),
+            kpi_card("Demand (next 30 days)", f"{data['total_demand']:,.0f} units", color=BLUE, icon="📦"),
             kpi_card("Net savings vs. naive plan", f"${net_savings:,.0f}/mo",
                      "vs. naive baseline" if net_savings >= 0 else "costs more than naive",
-                     "up" if net_savings >= 0 else "down", GREEN if net_savings >= 0 else RED),
+                     GREEN if net_savings >= 0 else RED, icon="💰"),
             kpi_card("Service level", f"{service_level:.1f}%",
                      None if service_level >= 100 else "below 100%",
-                     "neutral" if service_level >= 100 else "down",
-                     GREEN if service_level >= 100 else RED),
+                     GREEN if service_level >= 100 else RED, icon="🎯"),
             kpi_card("Top risk (expected loss)", f"${top_risk['expected_loss_residual']:,.0f}/mo",
-                     top_risk["scenario"], "down", AMBER),
+                     top_risk["scenario"], AMBER, icon="⚠️"),
         ])
 
     st.divider()
@@ -204,12 +210,12 @@ with tab1:
 with tab2:
     st.subheader("Demand Forecast")
     if data is None:
-        blank_kpi_row(["Backtest accuracy (30-day holdout)", "Actuals within forecast interval"])
+        blank_kpi_row([("Backtest accuracy (30-day holdout)", "🎯"), ("Actuals within forecast interval", "📊")])
         st.caption(f"{BLANK} select a data source above")
     else:
         kpi_row([
-            kpi_card("Backtest accuracy (30-day holdout)", f"{data['backtest_accuracy']:.1f}%", color=GREEN),
-            kpi_card("Actuals within forecast interval", f"{data['backtest_within_interval']:.0f}%", color=BLUE),
+            kpi_card("Backtest accuracy (30-day holdout)", f"{data['backtest_accuracy']:.1f}%", color=GREEN, icon="🎯"),
+            kpi_card("Actuals within forecast interval", f"{data['backtest_within_interval']:.0f}%", color=BLUE, icon="📊"),
         ])
 
         history = data["sales"].tail(90)
@@ -235,17 +241,17 @@ with tab2:
 with tab3:
     st.subheader("Procurement Plan")
     if data is None:
-        blank_kpi_row(["Total cost", "Suppliers used", "Diversification premium"])
+        blank_kpi_row([("Total cost", "💰"), ("Suppliers used", "🏭"), ("Diversification premium", "🛡️")])
         st.caption(f"{BLANK} select a data source above")
     else:
         plan = data["procurement_plan"]
         finance_row = data["finance"].loc[data["finance"]["category"] == "Procurement"].iloc[0]
 
         kpi_row([
-            kpi_card("Total cost", f"${plan['cost'].sum():,.0f}", color=BLUE),
-            kpi_card("Suppliers used", str(len(plan)), color=BLUE),
+            kpi_card("Total cost", f"${plan['cost'].sum():,.0f}", color=BLUE, icon="💰"),
+            kpi_card("Suppliers used", str(len(plan)), color=BLUE, icon="🏭"),
             kpi_card("Diversification premium", f"${finance_row['savings'] * -1:,.0f}",
-                     "buys faster failover", "down", AMBER),
+                     "buys faster failover", AMBER, icon="🛡️"),
         ])
 
         st.dataframe(plan[["name", "units_ordered", "unit_cost", "cost", "pct_of_order",
@@ -263,7 +269,7 @@ with tab3:
 with tab4:
     st.subheader("Inventory Positioning")
     if data is None:
-        blank_kpi_row(["Current holding cost", "Optimized holding cost", "Factory safety stock"])
+        blank_kpi_row([("Current holding cost", "📦"), ("Optimized holding cost", "📦"), ("Factory safety stock", "🏭")])
         st.caption(f"{BLANK} select a data source above")
     else:
         plan = data["inventory_plan"]
@@ -271,11 +277,11 @@ with tab4:
         cost_up = finance_row["savings"] < 0
 
         kpi_row([
-            kpi_card("Current holding cost", f"${plan['current_holding_cost'].sum():,.0f}/mo", color=GRAY),
+            kpi_card("Current holding cost", f"${plan['current_holding_cost'].sum():,.0f}/mo", color=GRAY, icon="📦"),
             kpi_card("Optimized holding cost", f"${plan['optimized_holding_cost'].sum():,.0f}/mo",
-                     f"{finance_row['savings']:+,.0f} vs. current", "down" if cost_up else "up",
-                     RED if cost_up else GREEN),
-            kpi_card("Factory safety stock", f"{data['safety_stock']:,.0f} units", color=BLUE),
+                     f"{finance_row['savings']:+,.0f} vs. current",
+                     RED if cost_up else GREEN, icon="📦"),
+            kpi_card("Factory safety stock", f"{data['safety_stock']:,.0f} units", color=BLUE, icon="🏭"),
         ])
 
         st.dataframe(plan[["location", "units_on_hand", "optimized_units",
@@ -302,7 +308,10 @@ with tab5:
                                    disabled=data is None)
 
     if data is None:
-        blank_kpi_row(["Demand", "Factory available capacity", "Shortfall", "Unmet (stockout)"])
+        blank_kpi_row([
+            ("Demand", "📈"), ("Factory available capacity", "🏭"),
+            ("Shortfall", "⚠️"), ("Unmet (stockout)", "🚨"),
+        ])
         st.caption(f"{BLANK} select a data source above")
     else:
         adjusted_demand = data["total_demand"] * (1 + demand_adjust_pct / 100)
@@ -310,13 +319,13 @@ with tab5:
         has_unmet = live_plan["unmet_units"] > 0
 
         kpi_row([
-            kpi_card("Demand", f"{live_plan['total_demand']:,.0f} units", color=BLUE),
-            kpi_card("Factory available capacity", f"{live_plan['available_capacity']:,.0f} units", color=BLUE),
+            kpi_card("Demand", f"{live_plan['total_demand']:,.0f} units", color=BLUE, icon="📈"),
+            kpi_card("Factory available capacity", f"{live_plan['available_capacity']:,.0f} units", color=BLUE, icon="🏭"),
             kpi_card("Shortfall", f"{live_plan['shortfall']:,.0f} units",
-                     color=AMBER if live_plan["shortfall"] > 0 else GREEN),
+                     color=AMBER if live_plan["shortfall"] > 0 else GREEN, icon="⚠️"),
             kpi_card("Unmet (stockout)", f"{live_plan['unmet_units']:,.0f} units",
                      "every lever maxed out" if has_unmet else "fully covered",
-                     "down" if has_unmet else "up", RED if has_unmet else GREEN),
+                     RED if has_unmet else GREEN, icon="🚨"),
         ])
 
         segments = [{"lever": "Factory (in-house)", "units": live_plan["factory_units"]}]
@@ -339,15 +348,15 @@ with tab5:
 with tab6:
     st.subheader("Logistics Consolidation")
     if data is None:
-        blank_kpi_row(["Unconsolidated cost", "Consolidated cost", "Savings from batching"])
+        blank_kpi_row([("Unconsolidated cost", "🚚"), ("Consolidated cost", "📦"), ("Savings from batching", "💰")])
         st.caption(f"{BLANK} select a data source above")
     else:
         plan = data["logistics_plan"]
 
         kpi_row([
-            kpi_card("Unconsolidated cost", f"${plan['unconsolidated_cost'].sum():,.0f}", color=GRAY),
-            kpi_card("Consolidated cost", f"${plan['consolidated_cost'].sum():,.0f}", color=BLUE),
-            kpi_card("Savings from batching", f"${plan['savings'].sum():,.0f}", color=GREEN),
+            kpi_card("Unconsolidated cost", f"${plan['unconsolidated_cost'].sum():,.0f}", color=GRAY, icon="🚚"),
+            kpi_card("Consolidated cost", f"${plan['consolidated_cost'].sum():,.0f}", color=BLUE, icon="📦"),
+            kpi_card("Savings from batching", f"${plan['savings'].sum():,.0f}", color=GREEN, icon="💰"),
         ])
 
         st.dataframe(plan[["region", "units", "num_orders", "containers", "leftover_mode",
@@ -367,17 +376,17 @@ with tab6:
 with tab7:
     st.subheader("Risk Scenarios")
     if data is None:
-        blank_kpi_row(["Top priority scenario", "Expected loss (residual)", "Scenarios tracked"])
+        blank_kpi_row([("Top priority scenario", "⚠️"), ("Expected loss (residual)", "💸"), ("Scenarios tracked", "📋")])
         st.caption(f"{BLANK} select a data source above")
     else:
         scenarios = data["risk_scenarios"]
         top = scenarios.iloc[0]
 
         kpi_row([
-            kpi_card("Top priority scenario", top["scenario"], color=RED),
+            kpi_card("Top priority scenario", top["scenario"], color=RED, icon="⚠️"),
             kpi_card("Expected loss (residual)", f"${top['expected_loss_residual']:,.0f}/mo",
-                     "even after current mitigations", "down", AMBER),
-            kpi_card("Scenarios tracked", str(len(scenarios)), color=BLUE),
+                     "even after current mitigations", AMBER, icon="💸"),
+            kpi_card("Scenarios tracked", str(len(scenarios)), color=BLUE, icon="📋"),
         ])
 
         st.dataframe(scenarios[["scenario", "probability", "unmitigated_cost", "residual_cost",
@@ -393,7 +402,7 @@ with tab7:
 with tab8:
     st.subheader("Financial Impact")
     if data is None:
-        blank_kpi_row(["Naive baseline (no optimization)", "Optimized (this system)", "Net savings"])
+        blank_kpi_row([("Naive baseline (no optimization)", "📊"), ("Optimized (this system)", "✅"), ("Net savings", "💰")])
         st.caption(f"{BLANK} select a data source above")
     else:
         finance = data["finance"]
@@ -402,10 +411,10 @@ with tab8:
         net_savings = naive_total - optimized_total
 
         kpi_row([
-            kpi_card("Naive baseline (no optimization)", f"${naive_total:,.0f}", color=GRAY),
-            kpi_card("Optimized (this system)", f"${optimized_total:,.0f}", color=BLUE),
+            kpi_card("Naive baseline (no optimization)", f"${naive_total:,.0f}", color=GRAY, icon="📊"),
+            kpi_card("Optimized (this system)", f"${optimized_total:,.0f}", color=BLUE, icon="✅"),
             kpi_card("Net savings", f"${net_savings:,.0f}/mo", f"{net_savings / naive_total:.1%} vs. naive",
-                     "up" if net_savings >= 0 else "down", GREEN if net_savings >= 0 else RED),
+                     GREEN if net_savings >= 0 else RED, icon="💰"),
         ])
 
         waterfall = go.Figure(go.Waterfall(
@@ -439,7 +448,7 @@ with tab9:
                                  disabled=data is None)
 
     if data is None:
-        blank_kpi_row(["Demand", "Total cost", "Service level", "Safety stock needed"])
+        blank_kpi_row([("Demand", "📈"), ("Total cost", "💰"), ("Service level", "🎯"), ("Safety stock needed", "📦")])
         st.caption(f"{BLANK} select a data source above")
     else:
         daily_demand_std = data["sales"]["units_sold"].std()
@@ -459,15 +468,14 @@ with tab9:
         has_unmet = live_result["unmet_units"] > 0
 
         kpi_row([
-            kpi_card("Demand", f"{live_result['demand']:,.0f} units", color=BLUE),
+            kpi_card("Demand", f"{live_result['demand']:,.0f} units", color=BLUE, icon="📈"),
             kpi_card("Total cost", f"${live_result['total_cost']:,.0f}",
                      f"{cost_delta:+,.0f} vs. baseline" if cost_delta else "at baseline",
-                     "down" if cost_delta > 0 else ("up" if cost_delta < 0 else "neutral"),
-                     RED if cost_delta > 0 else (GREEN if cost_delta < 0 else BLUE)),
+                     RED if cost_delta > 0 else (GREEN if cost_delta < 0 else BLUE), icon="💰"),
             kpi_card("Service level", f"{live_result['service_level']:.1f}%",
                      f"{live_result['service_level'] - 100:.1f} pts" if has_unmet else None,
-                     "down", RED if has_unmet else GREEN),
-            kpi_card("Safety stock needed", f"{live_result['safety_stock']:,.0f} units", color=BLUE),
+                     RED if has_unmet else GREEN, icon="🎯"),
+            kpi_card("Safety stock needed", f"{live_result['safety_stock']:,.0f} units", color=BLUE, icon="📦"),
         ])
 
         if live_result["unmet_units"] > 0:
