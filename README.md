@@ -68,11 +68,25 @@ risk/what-if scenarios, and financial performance — surfaced in a Streamlit da
 - `src/pipeline.py` — runs every Week 1-5 module in order in memory (no subprocess calls) and
   returns all the resulting dataframes; each step still writes its CSV to `outputs/` as a side
   effect, so the file artifacts match running the scripts by hand.
-- `streamlit_app.py` — 4 tabs: **Executive Dashboard** (KPI cards, active alerts pulled straight
-  from the Week 4 disruption simulation, plan-vs-actual table), **Demand Forecast** (history +
-  forecast + confidence band chart), **Procurement** (supplier mix table/chart + diversification
-  premium), **Inventory** (current vs. optimized positioning table/chart). Verified rendering
-  end-to-end with Playwright (all 4 tabs, no console errors).
+- `streamlit_app.py` — 4 tabs: **Executive Dashboard** (KPI cards, plan-vs-actual table),
+  **Demand Forecast** (history + forecast + confidence band chart), **Procurement** (supplier mix
+  table/chart + diversification premium), **Inventory** (current vs. optimized positioning
+  table/chart). A real-time alert banner (pulled straight from the Week 4 disruption simulation)
+  sits above all tabs, visible regardless of which one is open. Verified rendering end-to-end with
+  Playwright (no console errors).
+
+**Week 7 — Streamlit Dashboard (Part 2):** done.
+
+- 4 more tabs: **Production Status** (a live slider re-runs `plan_production` with adjusted
+  demand and redraws the factory/inventory/overtime/contractor stacked bar in real time - this is
+  the dashboard's first genuinely interactive tab, not just a static render of pre-computed
+  output), **Logistics** (per-region consolidation table/chart), **Risk Analysis** (scenario table
+  ranked by residual expected loss, with the top-priority scenario called out), **Financial
+  Impact** (a cost waterfall from naive baseline to optimized total, colored so red = cost
+  increase and green = savings - matches conventional financial color semantics, not Plotly's
+  default increasing/decreasing colors which read backwards for a cost chart).
+- All 8 tabs verified end-to-end with Playwright, including dragging the new Production Status
+  slider.
 
 ## Setup
 
