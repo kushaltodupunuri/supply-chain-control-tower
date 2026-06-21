@@ -14,8 +14,9 @@ import streamlit as st
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 from pipeline import run_full_pipeline  # noqa: E402
 from production import plan_production  # noqa: E402
+from whatif import run_scenario  # noqa: E402
 
-st.set_page_config(page_title="Supply Chain Control Tower", layout="wide")
+st.set_page_config(page_title="Supply Chain Control Tower", page_icon="📦", layout="wide")
 
 
 @st.cache_data
@@ -44,9 +45,9 @@ else:
     st.success("No active disruption alerts this period.")
 st.divider()
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "Executive Dashboard", "Demand Forecast", "Procurement", "Inventory",
-    "Production Status", "Logistics", "Risk Analysis", "Financial Impact",
+    "Production Status", "Logistics", "Risk Analysis", "Financial Impact", "What-If Simulator",
 ])
 
 # ---------------------------------------------------------------- Tab 1
@@ -243,3 +244,48 @@ with tab8:
     st.dataframe(finance[["category", "naive_cost", "optimized_cost", "savings", "note"]],
                  width='stretch', hide_index=True)
     st.caption(f"If sustained monthly: ${net_savings * 12:,.0f}/year")
+
+# ---------------------------------------------------------------- Tab 9
+with tab9:
+    st.subheader("What-If Simulator")
+    st.caption("Move the sliders to re-run the real procurement/production/safety-stock logic "
+               "under a hypothetical scenario - not a separate approximation.")
+
+    daily_demand_std = data["sales"]["units_sold"].std()
+    procurement_plan = data["procurement_plan"]
+    baseline_lead_time_days = (
+        (procurement_plan["units_ordered"] * procurement_plan["lead_time_weeks"]).sum()
+        / procurement_plan["units_ordered"].sum() * 7
+    )
+    common = dict(
+        baseline_demand=data["total_demand"], suppliers=data["suppliers"], factory=data["factory"],
+        inventory=data["current_inventory"], daily_demand_std=daily_demand_std,
+        baseline_lead_time_days=baseline_lead_time_days,
+    )
+    baseline_result = run_scenario(**common)
+
+    col1, col2, col3 = st.columns(3)
+    demand_pct = col1.slider("Demand", -50, 100, 0, step=5, format="%d%%", key="whatif_demand")
+    price_pct = col2.slider("Raw material price", -20, 30, 0, step=5, format="%d%%", key="whatif_price")
+    lead_time_pct = col3.slider("Supplier lead time", -30, 100, 0, step=10, format="%d%%", key="whatif_lead")
+
+    live_result = run_scenario(**common, demand_pct=demand_pct, price_pct=price_pct, lead_time_pct=lead_time_pct)
+    cost_delta = live_result["total_cost"] - baseline_result["total_cost"]
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Demand", f"{live_result['demand']:,.0f} units")
+    col2.metric("Total cost", f"${live_result['total_cost']:,.0f}", f"{cost_delta:+,.0f} vs. baseline",
+                delta_color="inverse")
+    col3.metric("Service level", f"{live_result['service_level']:.1f}%",
+                f"{live_result['service_level'] - 100:.1f} pts" if live_result["unmet_units"] > 0 else None)
+    col4.metric("Safety stock needed", f"{live_result['safety_stock']:,.0f} units")
+
+    if live_result["unmet_units"] > 0:
+        st.warning(f"{live_result['unmet_units']:,.0f} units unmet at this setting - every lever "
+                   f"(inventory, overtime, contractor) is maxed out.")
+
+    st.divider()
+    st.caption("Preset scenarios computed the same way, for reference:")
+    st.dataframe(data["whatif_scenarios"][["scenario", "demand", "total_cost", "service_level",
+                                            "unmet_units", "safety_stock", "cost_delta_vs_baseline"]],
+                 width='stretch', hide_index=True)
