@@ -254,7 +254,7 @@ with tab3:
 
         fig = px.bar(plan, x="name", y="cost", color="name", text="units_ordered",
                      labels={"cost": "Cost ($)", "name": "Supplier"})
-        fig.update_layout(height=350, showlegend=False, margin=dict(l=20, r=20, t=30, b=20))
+        fig.update_layout(height=350, showlegend=False, margin=dict(l=20, r=20, t=30, b=20), bargap=0.6)
         st.plotly_chart(fig, width='stretch')
 
         st.caption(finance_row["note"])
@@ -287,7 +287,8 @@ with tab4:
         melted["state"] = melted["state"].map({"units_on_hand": "Current", "optimized_units": "Optimized"})
         fig = px.bar(melted, x="location", y="units", color="state", barmode="group",
                      labels={"units": "Units", "location": "Location"})
-        fig.update_layout(height=350, margin=dict(l=20, r=20, t=30, b=20), legend_title_text="")
+        fig.update_layout(height=350, margin=dict(l=20, r=20, t=30, b=20), legend_title_text="",
+                           bargap=0.4, bargroupgap=0.15)
         st.plotly_chart(fig, width='stretch')
 
         st.caption(finance_row["note"])
@@ -326,7 +327,7 @@ with tab5:
 
         fig = px.bar(seg_df, x="units", y=["Demand coverage"] * len(seg_df), color="lever",
                      orientation="h", text="units", labels={"x": "Units", "y": ""})
-        fig.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20), legend_title_text="")
+        fig.update_layout(height=200, margin=dict(l=20, r=20, t=30, b=20), legend_title_text="", bargap=0.7)
         st.plotly_chart(fig, width='stretch')
 
         if len(live_plan["allocation"]):
@@ -358,7 +359,8 @@ with tab6:
         melted["mode"] = melted["mode"].map({"unconsolidated_cost": "Unconsolidated", "consolidated_cost": "Consolidated"})
         fig = px.bar(melted, x="region", y="cost", color="mode", barmode="group",
                      labels={"cost": "Cost ($)", "region": "Region"})
-        fig.update_layout(height=350, margin=dict(l=20, r=20, t=30, b=20), legend_title_text="")
+        fig.update_layout(height=350, margin=dict(l=20, r=20, t=30, b=20), legend_title_text="",
+                           bargap=0.4, bargroupgap=0.15)
         st.plotly_chart(fig, width='stretch')
 
 # ---------------------------------------------------------------- Tab 7
@@ -384,7 +386,7 @@ with tab7:
 
         fig = px.bar(scenarios, x="scenario", y="expected_loss_residual", color="scenario",
                      labels={"expected_loss_residual": "Expected loss, residual ($/mo)", "scenario": ""})
-        fig.update_layout(height=350, showlegend=False, margin=dict(l=20, r=20, t=30, b=20))
+        fig.update_layout(height=350, showlegend=False, margin=dict(l=20, r=20, t=30, b=20), bargap=0.5)
         st.plotly_chart(fig, width='stretch')
 
 # ---------------------------------------------------------------- Tab 8
@@ -415,7 +417,7 @@ with tab8:
             increasing=dict(marker=dict(color="#d62728")),  # cost increase = red (bad)
             decreasing=dict(marker=dict(color="#2ca02c")),  # cost decrease/savings = green (good)
         ))
-        waterfall.update_layout(height=400, margin=dict(l=20, r=20, t=30, b=20))
+        waterfall.update_layout(height=400, margin=dict(l=20, r=20, t=30, b=20), bargap=0.3)
         st.plotly_chart(waterfall, width='stretch')
 
         st.dataframe(finance[["category", "naive_cost", "optimized_cost", "savings", "note"]],
