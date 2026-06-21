@@ -20,27 +20,35 @@ def load_sales_history(path="data/sales_history.csv"):
     return df.rename(columns={"date": "ds", "units_sold": "y"})
 
 
-def build_model():
+def available_regressors(df):
+    """Use whichever of the known regressor columns the data actually has - a minimal
+    upload with just date/units_sold still works, just as plain Prophet with no regressors."""
+    return [r for r in REGRESSORS if r in df.columns]
+
+
+def build_model(regressors=REGRESSORS):
     m = Prophet(
         yearly_seasonality=True,
         weekly_seasonality=True,
         daily_seasonality=False,
         interval_width=0.85,
     )
-    for reg in REGRESSORS:
+    for reg in regressors:
         m.add_regressor(reg)
     return m
 
 
-def backtest(df):
+def backtest(df, regressors=None):
     """Fit on all but the last HOLDOUT_DAYS, predict them, score against actuals."""
+    if regressors is None:
+        regressors = available_regressors(df)
     train = df.iloc[:-HOLDOUT_DAYS]
     test = df.iloc[-HOLDOUT_DAYS:]
 
-    model = build_model()
-    model.fit(train[["ds", "y"] + REGRESSORS])
+    model = build_model(regressors)
+    model.fit(train[["ds", "y"] + regressors])
 
-    forecast = model.predict(test[["ds"] + REGRESSORS])
+    forecast = model.predict(test[["ds"] + regressors])
     actual = test["y"].to_numpy()
     predicted = forecast["yhat"].to_numpy()
 
@@ -53,24 +61,25 @@ def backtest(df):
     return accuracy, within_interval, predicted.sum(), actual.sum()
 
 
-def forecast_next_period(df):
+def forecast_next_period(df, regressors=None):
     """Fit on full history, forecast the next FORECAST_DAYS using assumed future regressors."""
-    model = build_model()
-    model.fit(df[["ds", "y"] + REGRESSORS])
+    if regressors is None:
+        regressors = available_regressors(df)
+    model = build_model(regressors)
+    model.fit(df[["ds", "y"] + regressors])
 
     future = model.make_future_dataframe(periods=FORECAST_DAYS)
-    future = future.merge(df[["ds"] + REGRESSORS], on="ds", how="left")
-
-    last_price = df["price"].iloc[-1]
-    last_day_of_year = df["ds"].iloc[-1].dayofyear
-
+    future = future.merge(df[["ds"] + regressors], on="ds", how="left")
     future_mask = future["ds"] > df["ds"].max()
-    future_doy = future.loc[future_mask, "ds"].dt.dayofyear
-    seasonal_temp = 60 + 20 * np.sin(2 * np.pi * (future_doy - 80) / 365.25)
 
-    future.loc[future_mask, "promotion_flag"] = 0  # no promo planned by default
-    future.loc[future_mask, "price"] = last_price  # assume price holds steady
-    future.loc[future_mask, "avg_temp_f"] = seasonal_temp.to_numpy()
+    if "promotion_flag" in regressors:
+        future.loc[future_mask, "promotion_flag"] = 0  # no promo planned by default
+    if "price" in regressors:
+        future.loc[future_mask, "price"] = df["price"].iloc[-1]  # assume price holds steady
+    if "avg_temp_f" in regressors:
+        future_doy = future.loc[future_mask, "ds"].dt.dayofyear
+        seasonal_temp = 60 + 20 * np.sin(2 * np.pi * (future_doy - 80) / 365.25)
+        future.loc[future_mask, "avg_temp_f"] = seasonal_temp.to_numpy()
 
     forecast = model.predict(future)
     return forecast.tail(FORECAST_DAYS)[["ds", "yhat", "yhat_lower", "yhat_upper"]]

@@ -1,10 +1,19 @@
 # Supply Chain Control Tower
 
-An end-to-end supply chain planning system for one synthetic T-shirt business, built module by
-module over 8 weeks: a demand forecast drives a procurement plan, which drives a production plan,
-which drives inventory positioning and logistics consolidation - each module reads the previous
-one's real output, not a hardcoded number. Risk scenarios, a what-if simulator, and a
-performance/financial dashboard sit on top, and everything is surfaced in a 9-tab Streamlit app.
+An end-to-end supply chain planning system, built module by module over 8 weeks: a demand
+forecast drives a procurement plan, which drives a production plan, which drives inventory
+positioning and logistics consolidation - each module reads the previous one's real output, not a
+hardcoded number. Risk scenarios, a what-if simulator, and a performance/financial dashboard sit
+on top, and everything is surfaced in a 9-tab Streamlit app.
+
+By default the dashboard runs on synthetic demo data (one example T-shirt business). Upload your
+own daily sales history (CSV with `date` and `units_sold` columns, optionally `promotion_flag`,
+`price`, `avg_temp_f`) at the top of the app to get a real demand forecast from your own numbers -
+everything downstream (procurement, production, inventory, logistics, risk, performance, finance)
+recomputes from that forecast automatically. Suppliers, factory capacity, and regional shipping
+costs stay as fixed demo-scale defaults either way (sized for ~30-50K units/month); if your
+uploaded data implies a very different scale, the app tells you rather than showing nonsense
+numbers.
 
 ## Pipeline
 
@@ -145,6 +154,27 @@ Plotly (dashboard).
   (no missing or extra packages), and confirmed `.gitignore` keeps generated data/outputs/logs out
   of version control.
 - Full end-to-end test: `generate_data.py` -> all 10 modules -> all 9 dashboard tabs, no errors.
+
+## Post-Launch: Upload Your Own Sales Data
+
+- Added a file uploader at the top of the dashboard. A real `date`/`units_sold` CSV (90+ rows
+  recommended, 60 minimum) replaces the synthetic sales history; the demand forecast - and
+  everything chained off it - recomputes from real numbers. `src/demand_forecast.py`'s regressors
+  (`promotion_flag`/`price`/`avg_temp_f`) are now auto-detected from whichever columns are present,
+  so a minimal upload (just `date` + `units_sold`) still works as plain Prophet with no
+  regressors, rather than crashing on missing columns.
+- If the upload has no `price` column, the app asks for an average selling price instead (needed
+  to turn unit-based risk/disruption impacts into dollar figures).
+- **Found and fixed a real bug while testing this**: `risk.py`'s "top supplier fails" scenario
+  re-ran procurement excluding that supplier assuming the remaining suppliers could always cover
+  full demand. With real (higher-demand) uploaded data this LP can be genuinely infeasible -
+  losing your biggest supplier really can leave you unable to fully cover demand from the rest.
+  Fixed to compute the real coverable amount and treat the gap as an honest stockout cost instead
+  of crashing.
+- Suppliers/factory/regional-shipping data stay as fixed demo-scale defaults (~30-50K units/month)
+  regardless of upload - they don't yet adapt to a real business's actual scale. `pipeline.py` now
+  checks the forecasted demand against total supplier capacity up front and fails with a clear
+  message rather than letting PuLP's infeasibility crash the app.
 
 ## Setup
 

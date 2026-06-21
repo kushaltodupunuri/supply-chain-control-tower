@@ -11,7 +11,7 @@ from generate_data import (
     generate_sales_history, generate_suppliers, generate_factory_status,
     generate_regional_demand, generate_inventory,
 )
-from demand_forecast import build_model, backtest, forecast_next_period, REGRESSORS, HOLDOUT_DAYS
+from demand_forecast import backtest, forecast_next_period
 from procurement import plan_procurement
 from production import plan_production
 from inventory import plan_inventory
@@ -29,8 +29,26 @@ from performance import (
 from finance import compare_procurement, compare_production, compare_logistics, compare_inventory
 
 
-def run_full_pipeline():
-    sales = generate_sales_history()
+MIN_SALES_ROWS = 60  # HOLDOUT_DAYS (30) + a minimum viable training window (30)
+
+
+def run_full_pipeline(uploaded_sales=None, avg_price_override=None):
+    """uploaded_sales: optional dataframe with at least 'date' and 'units_sold' columns,
+    from a user's own sales history. Replaces the synthetic demo data with real numbers;
+    everything downstream (procurement, production, inventory, logistics, risk, ...) then
+    runs off the resulting demand forecast instead of the synthetic baseline.
+
+    avg_price_override: required if uploaded_sales has no 'price' column - the risk/disruption
+    modules need a selling price to turn "units lost" into a dollar impact."""
+    if uploaded_sales is not None:
+        if len(uploaded_sales) < MIN_SALES_ROWS:
+            raise ValueError(f"Need at least {MIN_SALES_ROWS} rows of sales history, "
+                              f"got {len(uploaded_sales)}.")
+        sales = uploaded_sales.copy()
+        sales["date"] = pd.to_datetime(sales["date"])
+        sales = sales.sort_values("date").reset_index(drop=True)
+    else:
+        sales = generate_sales_history()
     suppliers = generate_suppliers()
     factory = generate_factory_status()
     regional_demand = generate_regional_demand()
@@ -50,6 +68,15 @@ def run_full_pipeline():
     total_demand = forecast["yhat"].sum()
 
     # Week 2 - Procurement + Production
+    total_supplier_capacity = suppliers["max_capacity_units"].sum()
+    if total_demand > total_supplier_capacity:
+        raise ValueError(
+            f"Your forecasted demand ({total_demand:,.0f} units) exceeds the combined supplier "
+            f"capacity this demo is configured with ({total_supplier_capacity:,.0f} units). "
+            f"Suppliers/factory/logistics are fixed demo-scale defaults sized for a business "
+            f"doing roughly 30-50K units/month - they don't yet adjust to your data's scale, so "
+            f"results outside that range won't be meaningful."
+        )
     procurement_plan = plan_procurement(total_demand, suppliers)
     procurement_plan.to_csv("outputs/procurement_plan.csv", index=False)
 
@@ -74,7 +101,12 @@ def run_full_pipeline():
     logistics_plan.to_csv("outputs/logistics_plan.csv", index=False)
 
     # Week 4 - Risk, Disruption, What-If
-    avg_price = sales["price"].mean()
+    if "price" in sales.columns:
+        avg_price = sales["price"].mean()
+    elif avg_price_override is not None:
+        avg_price = avg_price_override
+    else:
+        raise ValueError("Sales data has no 'price' column - pass avg_price_override.")
     avg_supplier_cost = (
         (procurement_plan["units_ordered"] * procurement_plan["unit_cost"]).sum()
         / procurement_plan["units_ordered"].sum()

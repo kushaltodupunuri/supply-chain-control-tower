@@ -35,16 +35,32 @@ def scenario_supplier_failure(total_demand, suppliers, procurement_plan, avg_pri
     unmitigated = top["units_ordered"] * avg_price  # no replacement at all
 
     backup_suppliers = suppliers[suppliers["supplier_id"] != top["supplier_id"]]
-    mitigated_plan = plan_procurement(total_demand, backup_suppliers)
-    residual = mitigated_plan["cost"].sum() - procurement_plan["cost"].sum()
+    backup_capacity = backup_suppliers["max_capacity_units"].sum()
+    coverable_demand = min(total_demand, backup_capacity)
+
+    # No diversification cap here - in an emergency you use every unit of backup capacity,
+    # there's nothing left to diversify against.
+    mitigated_plan = plan_procurement(coverable_demand, backup_suppliers, max_supplier_share=1.0)
+    original_cost_for_same_volume = procurement_plan["cost"].sum() * (coverable_demand / total_demand)
+    extra_procurement_cost = max(0.0, mitigated_plan["cost"].sum() - original_cost_for_same_volume)
+
+    stockout_units = total_demand - coverable_demand
+    stockout_cost = stockout_units * avg_price
+    residual = extra_procurement_cost + stockout_cost
+
+    mitigation = (f"Backup suppliers ({', '.join(backup_suppliers['name'])}) absorb the volume "
+                  f"at a higher blended cost instead of a stockout.")
+    if stockout_units > 0:
+        mitigation = (f"Backup suppliers ({', '.join(backup_suppliers['name'])}) can only cover "
+                       f"{backup_capacity:,.0f} of {total_demand:,.0f} units - "
+                       f"{stockout_units:,.0f} units would be a real stockout, not just a cost increase.")
 
     return {
         "scenario": f"{top['name']} fails to deliver",
         "probability": probability,
         "unmitigated_cost": unmitigated,
-        "residual_cost": max(0.0, residual),
-        "mitigation": f"Backup suppliers ({', '.join(backup_suppliers['name'])}) absorb the volume "
-                       f"at a higher blended cost instead of a stockout.",
+        "residual_cost": residual,
+        "mitigation": mitigation,
     }
 
 

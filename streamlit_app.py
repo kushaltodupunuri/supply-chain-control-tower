@@ -3,6 +3,7 @@ Supply Chain Control Tower dashboard.
 
 Run: streamlit run streamlit_app.py
 """
+import io
 import os
 import sys
 
@@ -18,17 +19,58 @@ from whatif import run_scenario  # noqa: E402
 
 st.set_page_config(page_title="Supply Chain Control Tower", page_icon="📦", layout="wide")
 
+REQUIRED_COLUMNS = ["date", "units_sold"]
+MIN_SALES_ROWS = 60
+
 
 @st.cache_data
-def load_pipeline():
-    return run_full_pipeline()
+def load_pipeline(sales_csv_bytes=None, avg_price_override=None):
+    uploaded_df = pd.read_csv(io.BytesIO(sales_csv_bytes)) if sales_csv_bytes is not None else None
+    return run_full_pipeline(uploaded_sales=uploaded_df, avg_price_override=avg_price_override)
 
-
-data = load_pipeline()
 
 st.title("Supply Chain Control Tower")
 st.caption("Demand forecast -> procurement -> production -> inventory -> logistics -> risk -> "
-           "performance, chained end-to-end on one synthetic T-shirt business.")
+           "performance, chained end-to-end.")
+
+# ---------------------------------------------------------------- Data source
+uploaded_file = st.file_uploader(
+    "Upload your own sales history (CSV with 'date' and 'units_sold' columns, "
+    "optionally 'promotion_flag', 'price', 'avg_temp_f')",
+    type="csv",
+)
+
+uploaded_bytes, avg_price_override, raw_df = None, None, None
+if uploaded_file is not None:
+    raw_df = pd.read_csv(uploaded_file)
+    missing = [c for c in REQUIRED_COLUMNS if c not in raw_df.columns]
+    if missing:
+        st.error(f"Missing required column(s): {', '.join(missing)}. "
+                 f"Your file has: {', '.join(raw_df.columns)}")
+        st.stop()
+    if len(raw_df) < MIN_SALES_ROWS:
+        st.error(f"Need at least {MIN_SALES_ROWS} rows of sales history - got {len(raw_df)}.")
+        st.stop()
+    uploaded_bytes = uploaded_file.getvalue()
+    if "price" not in raw_df.columns:
+        avg_price_override = st.number_input(
+            "No 'price' column found - enter your average selling price per unit "
+            "(needed to turn unit-based risk/disruption impacts into dollar figures)",
+            min_value=0.01, value=20.0, step=0.5,
+        )
+
+try:
+    data = load_pipeline(uploaded_bytes, avg_price_override)
+except ValueError as e:
+    st.error(str(e))
+    st.stop()
+
+if uploaded_file is not None:
+    st.success(f"Using your uploaded data: {len(raw_df):,} rows, "
+               f"{pd.to_datetime(raw_df['date']).min().date()} to {pd.to_datetime(raw_df['date']).max().date()}.")
+else:
+    st.info("Showing demo data from a synthetic example business - upload your own sales "
+            "history above to see your real numbers.")
 
 # ---------------------------------------------------------------- Real-time alert banner
 quality_alerts = data["quality_reports"][data["quality_reports"]["emergency_cost"] > 0]
