@@ -5,6 +5,8 @@ to ten separate scripts. Each step still writes its CSV to outputs/ as a
 side effect, so the file-based artifacts stay identical to running the
 scripts by hand.
 """
+import os
+
 import pandas as pd
 
 from generate_data import (
@@ -40,6 +42,9 @@ def run_full_pipeline(uploaded_sales=None, avg_price_override=None):
 
     avg_price_override: required if uploaded_sales has no 'price' column - the risk/disruption
     modules need a selling price to turn "units lost" into a dollar impact."""
+    os.makedirs("data", exist_ok=True)
+    os.makedirs("outputs", exist_ok=True)
+
     if uploaded_sales is not None:
         if len(uploaded_sales) < MIN_SALES_ROWS:
             raise ValueError(f"Need at least {MIN_SALES_ROWS} rows of sales history, "
