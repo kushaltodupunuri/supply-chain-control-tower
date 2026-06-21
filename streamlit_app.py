@@ -65,8 +65,68 @@ st.markdown("""
     margin-top: 6px;
     color: var(--kpi-color, #6b7280);
 }
+.perf-table-wrap {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
+    overflow: hidden;
+    margin: 8px 0 20px 0;
+}
+table.perf-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.perf-table th {
+    background: #f9fafb;
+    text-align: left;
+    padding: 12px 18px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid #e5e7eb;
+}
+.perf-table td { padding: 14px 18px; border-bottom: 1px solid #f1f1f4; vertical-align: middle; }
+.perf-table tr:last-child td { border-bottom: none; }
+.perf-table .metric-cell { font-weight: 700; color: #111827; white-space: nowrap; }
+.perf-table .num-cell { text-align: right; font-weight: 600; color: #111827; white-space: nowrap; }
+.perf-table .note-cell { color: #6b7280; font-size: 0.85rem; }
+.perf-pill {
+    display: inline-block; padding: 3px 12px; border-radius: 999px;
+    font-size: 0.76rem; font-weight: 700; color: #fff; white-space: nowrap;
+}
 </style>
 """, unsafe_allow_html=True)
+
+PERF_ROW_META = {
+    "Demand forecast": ("📈", "{:,.0f} units"),
+    "Procurement cost": ("💰", "${:,.0f}"),
+    "Production cost": ("🏭", "${:,.0f}"),
+    "Logistics cost": ("🚚", "${:,.0f}"),
+    "Inventory (units)": ("📦", "{:,.0f} units"),
+    "On-time delivery (%)": ("✅", "{:.0f}%"),
+}
+
+
+def performance_table(df):
+    rows_html = []
+    for row in df.itertuples():
+        icon, fmt = PERF_ROW_META.get(row.metric, ("📊", "{:,.1f}"))
+        pill_color = GREEN if row.accuracy_pct >= 95 else (AMBER if row.accuracy_pct >= 85 else RED)
+        rows_html.append(
+            f'<tr>'
+            f'<td class="metric-cell">{icon} {row.metric}</td>'
+            f'<td class="num-cell">{fmt.format(row.planned)}</td>'
+            f'<td class="num-cell">{fmt.format(row.actual)}</td>'
+            f'<td><span class="perf-pill" style="background:{pill_color}">{row.accuracy_pct:.0f}% accurate</span></td>'
+            f'<td class="note-cell">{row.note}</td>'
+            f'</tr>'
+        )
+    table_html = (
+        '<div class="perf-table-wrap"><table class="perf-table">'
+        '<tr><th>Metric</th><th style="text-align:right">Planned</th><th style="text-align:right">Actual</th>'
+        '<th>Accuracy</th><th>Note</th></tr>'
+        + "".join(rows_html) + "</table></div>"
+    )
+    st.markdown(table_html, unsafe_allow_html=True)
 
 
 def kpi_card(label, value, sub=None, color=BLUE, icon=""):
@@ -203,8 +263,7 @@ with tab1:
     if data is None:
         st.caption(f"{BLANK} select a data source above")
     else:
-        st.dataframe(data["performance"][["metric", "planned", "actual", "variance", "note"]],
-                     width='stretch', hide_index=True)
+        performance_table(data["performance"])
 
 # ---------------------------------------------------------------- Tab 2
 with tab2:
