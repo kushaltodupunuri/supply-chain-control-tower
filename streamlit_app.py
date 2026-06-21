@@ -34,14 +34,29 @@ st.caption("Demand forecast -> procurement -> production -> inventory -> logisti
            "performance, chained end-to-end.")
 
 # ---------------------------------------------------------------- Data source
-uploaded_file = st.file_uploader(
-    "Upload your own sales history (CSV with 'date' and 'units_sold' columns, "
-    "optionally 'promotion_flag', 'price', 'avg_temp_f')",
-    type="csv",
+data_source = st.radio(
+    "Data source",
+    ["Use demo dataset", "Upload my own data"],
+    index=None,
+    horizontal=True,
 )
 
+if data_source is None:
+    st.info("Choose a data source above to continue.")
+    st.stop()
+
 uploaded_bytes, avg_price_override, raw_df = None, None, None
-if uploaded_file is not None:
+
+if data_source == "Upload my own data":
+    uploaded_file = st.file_uploader(
+        "Upload your sales history (CSV with 'date' and 'units_sold' columns, "
+        "optionally 'promotion_flag', 'price', 'avg_temp_f')",
+        type="csv",
+    )
+    if uploaded_file is None:
+        st.info("Upload a CSV to continue.")
+        st.stop()
+
     raw_df = pd.read_csv(uploaded_file)
     missing = [c for c in REQUIRED_COLUMNS if c not in raw_df.columns]
     if missing:
@@ -65,12 +80,11 @@ except ValueError as e:
     st.error(str(e))
     st.stop()
 
-if uploaded_file is not None:
+if data_source == "Upload my own data":
     st.success(f"Using your uploaded data: {len(raw_df):,} rows, "
                f"{pd.to_datetime(raw_df['date']).min().date()} to {pd.to_datetime(raw_df['date']).max().date()}.")
 else:
-    st.info("Showing demo data from a synthetic example business - upload your own sales "
-            "history above to see your real numbers.")
+    st.info("Showing demo data from a synthetic example business.")
 
 # ---------------------------------------------------------------- Real-time alert banner
 quality_alerts = data["quality_reports"][data["quality_reports"]["emergency_cost"] > 0]
